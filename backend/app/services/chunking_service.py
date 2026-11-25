@@ -21,7 +21,18 @@ class ChunkingService:
             page_text = page["cleaned_text"]
             default_heading = page.get("first_heading") or f"Page {page_num}"
 
-            if not page_text:
+            if not page_text or len(page_text.strip()) == 0:
+                all_chunks.append({
+                    "page_number": page_num,
+                    "section_heading": f"{default_heading} (Technical Diagram / Flight Record)",
+                    "chunk_text": f"Technical schematic diagram, instrument plot, or flight illustration documented on Page {page_num}.",
+                    "chunk_metadata": {
+                        "word_count": 10,
+                        "char_count": 80,
+                        "page_number": page_num,
+                        "is_diagram_page": True
+                    }
+                })
                 continue
 
             words = page_text.split()
