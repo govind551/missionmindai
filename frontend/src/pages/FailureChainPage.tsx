@@ -12,7 +12,7 @@ export const FailureChainPage: React.FC = () => {
   const [activeChain, setActiveChain] = useState<FailureChain | null>(null);
   const [loading, setLoading] = useState(true);
   const [chainLoading, setChainLoading] = useState(false);
-  const [pdfInspector, setPdfInspector] = useState<{ docTitle?: string; page?: number } | null>(null);
+  const [pdfInspector, setPdfInspector] = useState<{ docTitle?: string; page?: number; docId?: number } | null>(null);
 
   useEffect(() => {
     loadMissions();
@@ -108,7 +108,11 @@ export const FailureChainPage: React.FC = () => {
       ) : activeChain ? (
         <FailureChainTimeline
           chain={activeChain}
-          onSelectEvidence={(title, page) => setPdfInspector({ docTitle: title, page })}
+          onSelectEvidence={(title, page) => setPdfInspector({
+            docTitle: title,
+            page,
+            docId: activeChain.document_id || activeChain.incident_id || 1
+          })}
         />
       ) : (
         <div className="p-12 text-center rounded-3xl bg-space-900 border border-space-700 text-xs text-slate-400">
@@ -120,7 +124,7 @@ export const FailureChainPage: React.FC = () => {
       {pdfInspector && (
         <PDFViewer
           citation={null}
-          documentId={1} // Default Mars Climate Orbiter or active doc
+          documentId={pdfInspector.docId || activeChain?.document_id || 1}
           initialPage={pdfInspector.page || 1}
           onClose={() => setPdfInspector(null)}
         />

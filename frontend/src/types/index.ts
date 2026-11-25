@@ -96,6 +96,7 @@ export interface FailureEvent {
 
 export interface FailureChain {
   incident_id: number;
+  document_id?: number;
   mission_name: string;
   space_agency: string;
   subsystem: string;

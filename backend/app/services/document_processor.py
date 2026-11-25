@@ -59,6 +59,13 @@ class DocumentProcessor:
             db.commit()
             db.refresh(doc)
 
+            # Auto-generate Failure Chain for newly ingested document
+            try:
+                from app.services.failure_chain_service import FailureChainService
+                FailureChainService.generate_chain_for_document(db, doc.id)
+            except Exception as fc_err:
+                logger.warning(f"Could not auto-generate failure chain for Document #{doc.id}: {fc_err}")
+
             logger.info(f"Successfully processed Document #{doc.id}: {len(chunks_data)} chunks created.")
             return {
                 "document_id": doc.id,
