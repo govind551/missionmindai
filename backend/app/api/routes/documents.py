@@ -178,10 +178,11 @@ def stream_pdf(document_id: int, db: Session = Depends(get_db)):
     doc = db.query(Document).filter(Document.id == document_id).first()
     if not doc or not os.path.exists(doc.file_path):
         raise HTTPException(status_code=404, detail="Document PDF binary not found on server")
+    # Return with Content-Disposition inline to prevent browser auto-downloading
     return FileResponse(
         doc.file_path,
         media_type="application/pdf",
-        filename=Path(doc.file_path).name
+        headers={"Content-Disposition": "inline"}
     )
 
 @router.get("/{document_id}/pages/{page_number}")
