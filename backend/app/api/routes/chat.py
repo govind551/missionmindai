@@ -8,9 +8,10 @@ from app.models.research_session import ResearchSession
 from app.models.research_message import ResearchMessage
 from app.schemas.chat import (
     QuestionRequest, AnswerResponse, ResearchSessionOut,
-    ResearchSessionCreate, ResearchMessageOut
+    ResearchSessionCreate, ResearchMessageOut, SessionSummaryOut
 )
 from app.services.rag_service import RAGService
+from app.services.report_service import ReportService
 
 router = APIRouter(prefix="/chat", tags=["Research Assistant"])
 
@@ -64,6 +65,14 @@ def get_session(session_id: int, db: Session = Depends(get_db)):
     if not session:
         raise HTTPException(status_code=404, detail="Research session not found")
     return session
+
+@router.get("/sessions/{session_id}/summary", response_model=SessionSummaryOut)
+def get_session_summary(session_id: int, db: Session = Depends(get_db)):
+    try:
+        summary = ReportService.get_session_summary_data(db, session_id)
+        return summary
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 @router.delete("/sessions/{session_id}")
 def delete_session(session_id: int, db: Session = Depends(get_db)):

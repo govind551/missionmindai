@@ -44,3 +44,23 @@ class ResearchSessionOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+class QAPairSummary(BaseModel):
+    query_number: int
+    question: str
+    answer: str
+    citations: List[Dict[str, Any]] = []
+    retrieval_confidence: float = 0.0
+    timestamp: Optional[datetime] = None
+
+class SessionSummaryOut(BaseModel):
+    session_id: int
+    session_title: str
+    total_queries: int
+    total_answers: int
+    missions_covered: List[str] = []
+    agencies_covered: List[str] = []
+    total_citations: int
+    average_confidence: float
+    executive_summary: str
+    qa_pairs: List[QAPairSummary] = []

@@ -2,7 +2,7 @@ import axios from 'axios';
 import {
   User, CitationItem, ResearchMessage, ResearchSession,
   DocumentItem, FailureIncident, FailureChain,
-  GeneratedReportItem, SystemStats
+  GeneratedReportItem, SystemStats, SessionSummaryData
 } from '../types';
 
 const API_BASE = '/api';
@@ -64,6 +64,10 @@ export const chatService = {
   },
   async getSession(id: number): Promise<ResearchSession> {
     const res = await apiClient.get(`/chat/sessions/${id}`);
+    return res.data;
+  },
+  async getSessionSummary(id: number): Promise<SessionSummaryData> {
+    const res = await apiClient.get(`/chat/sessions/${id}/summary`);
     return res.data;
   },
   async deleteSession(id: number) {
@@ -164,6 +168,9 @@ export const reportService = {
   },
   getDownloadUrl(reportId: number) {
     return `/api/reports/${reportId}/download`;
+  },
+  getLatestSessionDownloadUrl(sessionId: number) {
+    return `/api/reports/session/${sessionId}/download-latest`;
   }
 };
 

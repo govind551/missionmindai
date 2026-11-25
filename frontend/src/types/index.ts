@@ -115,6 +115,28 @@ export interface GeneratedReportItem {
   created_at: string;
 }
 
+export interface QAPairSummary {
+  query_number: number;
+  question: string;
+  answer: string;
+  citations: CitationItem[];
+  retrieval_confidence: number;
+  timestamp?: string;
+}
+
+export interface SessionSummaryData {
+  session_id: number;
+  session_title: string;
+  total_queries: number;
+  total_answers: number;
+  missions_covered: string[];
+  agencies_covered: string[];
+  total_citations: number;
+  average_confidence: number;
+  executive_summary: string;
+  qa_pairs: QAPairSummary[];
+}
+
 export interface SystemStats {
   total_documents: number;
   total_chunks: number;

@@ -89,3 +89,23 @@ def download_report(report_id: int, db: Session = Depends(get_db)):
         media_type="application/pdf",
         filename=filename
     )
+
+@router.get("/session/{session_id}/download-latest")
+def download_latest_session_report(
+    session_id: int,
+    current_user: User = Depends(get_optional_current_user),
+    db: Session = Depends(get_db)
+):
+    user_id = current_user.id if current_user else 1
+    report = ReportService.generate_research_pdf(
+        db=db,
+        user_id=user_id,
+        session_id=session_id,
+        report_title="MISSIONMIND AI – Technical Investigation Report"
+    )
+    filename = os.path.basename(report.file_path)
+    return FileResponse(
+        report.file_path,
+        media_type="application/pdf",
+        filename=filename
+    )

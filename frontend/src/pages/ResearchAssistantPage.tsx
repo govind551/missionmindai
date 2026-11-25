@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Send, Brain, Sparkles, MessageSquare, Plus, Trash2,
-  FileText, ShieldCheck, Gauge, AlertCircle, RefreshCw
+  FileText, ShieldCheck, Gauge, AlertCircle, RefreshCw,
+  Download, Loader2
 } from 'lucide-react';
-import { chatService } from '../services/api';
+import { chatService, reportService } from '../services/api';
 import { ResearchSession, ResearchMessage, CitationItem } from '../types';
 import { ConfidenceIndicator } from '../components/chat/ConfidenceIndicator';
 import { CitationList } from '../components/chat/CitationList';
 import { VoiceRecorder } from '../components/voice/VoiceRecorder';
 import { PDFViewer } from '../components/documents/PDFViewer';
+import { ChatSummaryModal } from '../components/chat/ChatSummaryModal';
 import { Loader } from '../components/common/Loader';
 
 const SUGGESTED_QUESTIONS = [
@@ -28,7 +30,34 @@ export const ResearchAssistantPage: React.FC = () => {
   const [inputQuestion, setInputQuestion] = useState('');
   const [isAnswering, setIsAnswering] = useState(false);
   const [selectedCitation, setSelectedCitation] = useState<CitationItem | null>(null);
+  const [isSummaryOpen, setIsSummaryOpen] = useState(false);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const handleQuickDownloadPdf = async () => {
+    if (!currentSessionId || messages.length === 0 || isDownloadingPdf) return;
+    setIsDownloadingPdf(true);
+    try {
+      const report = await reportService.generate({
+        session_id: currentSessionId,
+        report_title: 'MISSIONMIND AI – Aerospace Technical Investigation Report',
+        include_failure_chain: true,
+        include_similar_failures: true
+      });
+      const downloadUrl = reportService.getDownloadUrl(report.id);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.setAttribute('download', `missionmind_session_${currentSessionId}_report.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      console.error('Failed to quick download PDF report:', err);
+      window.open(reportService.getLatestSessionDownloadUrl(currentSessionId), '_blank');
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  };
 
   // Load research sessions
   useEffect(() => {
@@ -219,6 +248,42 @@ export const ResearchAssistantPage: React.FC = () => {
           </div>
 
           <div className="flex items-center space-x-2">
+            {/* Chat Summary Modal Button */}
+            <button
+              onClick={() => setIsSummaryOpen(true)}
+              disabled={messages.length === 0}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-space-850 hover:bg-space-800 text-xs font-medium text-slate-300 hover:text-white border border-space-700 hover:border-cosmic-purple/60 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+              title={messages.length === 0 ? "Ask questions to view session summary" : "View complete session inquiry summary & audit"}
+            >
+              <FileText className="w-3.5 h-3.5 text-cosmic-purple" />
+              <span>Chat Summary</span>
+              {messages.length > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-cosmic-purple/20 text-cosmic-purple text-[10px] font-mono font-bold">
+                  {messages.filter(m => m.role === 'user').length}
+                </span>
+              )}
+            </button>
+
+            {/* Quick Download PDF Button */}
+            <button
+              onClick={handleQuickDownloadPdf}
+              disabled={messages.length === 0 || isDownloadingPdf}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cosmic-violet/20 hover:bg-cosmic-violet text-cosmic-purple hover:text-white border border-cosmic-purple/40 hover:border-cosmic-purple text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer shadow-sm"
+              title={messages.length === 0 ? "Ask questions to generate PDF report" : "Download comprehensive PDF report with all inquiries, answers and citations"}
+            >
+              {isDownloadingPdf ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Exporting...</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download PDF</span>
+                </>
+              )}
+            </button>
+
             <VoiceRecorder
               onTranscribedText={(t) => handleSend(t)}
               lastAssistantAnswer={lastAssistantMsg}
@@ -356,6 +421,14 @@ export const ResearchAssistantPage: React.FC = () => {
           onClose={() => setSelectedCitation(null)}
         />
       )}
+
+      {/* Investigation Session Chat Summary Modal */}
+      <ChatSummaryModal
+        sessionId={currentSessionId}
+        isOpen={isSummaryOpen}
+        onClose={() => setIsSummaryOpen(false)}
+        onSelectCitation={(cit) => setSelectedCitation(cit)}
+      />
     </div>
   );
 };
