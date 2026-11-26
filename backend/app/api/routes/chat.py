@@ -27,8 +27,11 @@ async def ask_question(
         question=req.question,
         user_id=user_id,
         session_id=req.session_id,
+        mission_filter=req.mission_filter,
         subsystem_filter=req.subsystem_filter,
-        agency_filter=req.agency_filter
+        agency_filter=req.agency_filter,
+        document_id=req.document_id,
+        is_all_reports=req.is_all_reports
     )
     return result
 

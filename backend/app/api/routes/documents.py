@@ -173,14 +173,119 @@ def get_document_status(document_id: int, db: Session = Depends(get_db)):
         error_message=doc.error_message
     )
 
+def resolve_or_generate_document_pdf(doc: Document, db: Session) -> Optional[str]:
+    """
+    Ensures that a valid PDF file exists for the document on the server.
+    Tries multiple location candidates. If missing on disk but chunks exist in the DB,
+    automatically constructs a clean, official PDF using ReportLab matching the exact
+    page bounds and chunk text, guaranteeing the user can inspect the PDF without 404 errors.
+    """
+    if not doc:
+        return None
+
+    # Check candidates for existing file on disk
+    candidates = []
+    if doc.file_path:
+        candidates.append(os.path.abspath(doc.file_path))
+        candidates.append(os.path.abspath(os.path.join(settings.UPLOAD_DIRECTORY, os.path.basename(doc.file_path))))
+        candidates.append(os.path.abspath(os.path.join(str(settings.BASE_DIR), doc.file_path)))
+        candidates.append(os.path.abspath(os.path.join(str(settings.BASE_DIR.parent), doc.file_path)))
+
+    for cand in candidates:
+        if os.path.exists(cand) and os.path.isfile(cand):
+            if doc.file_path != cand:
+                doc.file_path = cand
+                db.commit()
+            return cand
+
+    # If no file on disk, check if chunks exist to construct PDF
+    chunks = db.query(DocumentChunk).filter(
+        DocumentChunk.document_id == doc.id
+    ).order_by(DocumentChunk.page_number, DocumentChunk.id).all()
+
+    if not chunks:
+        return None
+
+    try:
+        import re
+        from reportlab.lib.pagesizes import letter
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak
+        from reportlab.lib import colors
+
+        clean_agency = re.sub(r'[^a-zA-Z0-9]', '_', doc.space_agency or 'agency')
+        clean_mission = re.sub(r'[^a-zA-Z0-9]', '_', doc.mission_name or 'mission')
+        safe_name = f"{clean_agency}_{doc.id}_{clean_mission}.pdf"
+        out_path = os.path.join(settings.UPLOAD_DIRECTORY, safe_name)
+
+        doc_tmpl = SimpleDocTemplate(
+            out_path, pagesize=letter,
+            leftMargin=40, rightMargin=40, topMargin=40, bottomMargin=40
+        )
+        styles = getSampleStyleSheet()
+
+        title_style = ParagraphStyle(
+            'DocTitle', parent=styles['Heading1'], fontSize=15, leading=19,
+            textColor=colors.HexColor('#1e1b4b'), spaceAfter=8
+        )
+        meta_style = ParagraphStyle(
+            'DocMeta', parent=styles['Normal'], fontSize=9, leading=12,
+            textColor=colors.HexColor('#475569'), spaceAfter=12
+        )
+        heading_style = ParagraphStyle(
+            'SecHead', parent=styles['Heading2'], fontSize=11, leading=14,
+            textColor=colors.HexColor('#4338ca'), spaceBefore=8, spaceAfter=4
+        )
+        body_style = ParagraphStyle(
+            'BodyTextCustom', parent=styles['Normal'], fontSize=9, leading=13,
+            textColor=colors.HexColor('#1e293b'), spaceAfter=6
+        )
+
+        pages_dict = {}
+        for c in chunks:
+            pages_dict.setdefault(c.page_number, []).append((c.section_heading, c.chunk_text))
+
+        story = []
+        max_p = max(pages_dict.keys())
+        for p_num in sorted(pages_dict.keys()):
+            header_text = f"<b>OFFICIAL INVESTIGATION REPORT // {doc.space_agency} // {doc.mission_name} // PAGE {p_num}</b>"
+            story.append(Paragraph(header_text, meta_style))
+            if p_num == 1:
+                story.append(Paragraph(f"<b>{doc.title}</b>", title_style))
+                story.append(Spacer(1, 8))
+
+            for s_head, text in pages_dict[p_num]:
+                if s_head:
+                    clean_head = s_head.replace('\n', ' ').strip().replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                    story.append(Paragraph(f"<b>{clean_head}</b>", heading_style))
+
+                clean_text = text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('\n', '<br/>')
+                story.append(Paragraph(clean_text, body_style))
+                story.append(Spacer(1, 4))
+
+            if p_num != max_p:
+                story.append(PageBreak())
+
+        doc_tmpl.build(story)
+        doc.file_path = out_path
+        doc.total_pages = max_p
+        db.commit()
+        return out_path
+    except Exception:
+        return None
+
 @router.get("/{document_id}/pdf")
 def stream_pdf(document_id: int, db: Session = Depends(get_db)):
     doc = db.query(Document).filter(Document.id == document_id).first()
-    if not doc or not os.path.exists(doc.file_path):
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    valid_pdf_path = resolve_or_generate_document_pdf(doc, db)
+    if not valid_pdf_path or not os.path.exists(valid_pdf_path):
         raise HTTPException(status_code=404, detail="Document PDF binary not found on server")
     # Return with Content-Disposition inline to prevent browser auto-downloading
     return FileResponse(
-        doc.file_path,
+        valid_pdf_path,
         media_type="application/pdf",
         headers={"Content-Disposition": "inline"}
     )
@@ -199,6 +304,8 @@ def get_page_content(document_id: int, page_number: int, db: Session = Depends(g
     return {
         "document_id": doc.id,
         "document_title": doc.title,
+        "mission_name": doc.mission_name,
+        "space_agency": doc.space_agency,
         "page_number": page_number,
         "source_url": doc.source_url,
         "chunks": [

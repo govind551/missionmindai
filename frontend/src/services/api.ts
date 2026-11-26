@@ -50,6 +50,8 @@ export const chatService = {
     session_id?: number;
     subsystem_filter?: string;
     agency_filter?: string;
+    document_id?: number;
+    is_all_reports?: boolean;
   }) {
     const res = await apiClient.post('/chat/ask', data);
     return res.data;

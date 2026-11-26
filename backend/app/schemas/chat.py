@@ -6,8 +6,11 @@ from app.schemas.citation import CitationItem
 class QuestionRequest(BaseModel):
     question: str
     session_id: Optional[int] = None
+    mission_filter: Optional[str] = None
     subsystem_filter: Optional[str] = None
     agency_filter: Optional[str] = None
+    document_id: Optional[int] = None
+    is_all_reports: Optional[bool] = False
 
 class AnswerResponse(BaseModel):
     answer: str
@@ -18,6 +21,8 @@ class AnswerResponse(BaseModel):
     session_id: int
     message_id: int
     created_at: datetime
+    confidence_details: Optional[Dict[str, Any]] = None
+    active_mission: Optional[str] = None
 
 class ResearchMessageOut(BaseModel):
     id: int

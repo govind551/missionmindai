@@ -27,11 +27,11 @@ class DocumentChunkOut(BaseModel):
 
 class DocumentOut(DocumentBase):
     id: int
-    file_path: str
-    total_pages: int
-    processing_status: str
+    file_path: Optional[str] = ""
+    total_pages: Optional[int] = 0
+    processing_status: Optional[str] = "completed"
     error_message: Optional[str] = None
-    created_at: datetime
+    created_at: Optional[datetime] = None
     chunk_count: Optional[int] = 0
 
     class Config:

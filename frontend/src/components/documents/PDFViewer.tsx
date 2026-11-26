@@ -23,7 +23,7 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({
   const docId = citation ? citation.document_id : documentId;
   const targetPage = citation ? citation.page_number : initialPage;
   const [currentPage, setCurrentPage] = useState<number>(targetPage);
-  const [activeTab, setActiveTab] = useState<'evidence' | 'pdf'>('evidence');
+  const [activeTab, setActiveTab] = useState<'evidence' | 'pdf'>(citation ? 'evidence' : 'pdf');
   const [pageData, setPageData] = useState<any>(null);
   const [loadingPage, setLoadingPage] = useState<boolean>(true);
 
@@ -72,11 +72,11 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({
               </h3>
               <div className="flex items-center gap-2 text-xs text-slate-400 mt-0.5">
                 <span className="font-mono text-cosmic-cyan font-semibold">
-                  {citation?.space_agency || "AEROSPACE ARCHIVE"} • {citation?.mission_name || "Space Mission"}
+                  {citation?.space_agency || pageData?.space_agency || "AEROSPACE ARCHIVE"} • {citation?.mission_name || pageData?.mission_name || "Space Mission"}
                 </span>
                 <span>•</span>
                 <span className="text-amber-400 font-mono font-bold px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">
-                  Page {currentPage} Cited
+                  {citation ? `Page ${currentPage} Cited` : `Page ${currentPage}`}
                 </span>
               </div>
             </div>

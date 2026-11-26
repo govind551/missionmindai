@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   FileText, Upload, Search, Filter, ExternalLink, RefreshCw,
-  Trash2, CheckCircle2, AlertTriangle, Eye, Plus
+  Trash2, CheckCircle2, AlertTriangle, Eye, Plus, X
 } from 'lucide-react';
 import { documentService } from '../services/api';
 import { DocumentItem } from '../types';
@@ -30,6 +30,7 @@ export const DocumentLibraryPage: React.FC = () => {
   const [uploadLicence, setUploadLicence] = useState('Public Domain / Official Government Release');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
+  const [uploadSuccessMessage, setUploadSuccessMessage] = useState('');
 
   useEffect(() => {
     loadDocuments();
@@ -70,10 +71,11 @@ export const DocumentLibraryPage: React.FC = () => {
       if (uploadSourceUrl) formData.append('source_url', uploadSourceUrl);
       formData.append('licence', uploadLicence);
 
-      await documentService.uploadDocument(formData);
+      const newDoc = await documentService.uploadDocument(formData);
       setIsUploadModalOpen(false);
       resetUploadForm();
-      loadDocuments();
+      setUploadSuccessMessage(`Report "${newDoc.title}" successfully uploaded and indexed with ${newDoc.total_pages} page(s) and ${newDoc.chunk_count || 0} chunk(s)!`);
+      await loadDocuments();
     } catch (err: any) {
       setUploadError(err.response?.data?.detail || "Upload or PDF ingestion failed.");
     } finally {
@@ -170,6 +172,23 @@ export const DocumentLibraryPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Upload Success Banner */}
+      {uploadSuccessMessage && (
+        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 flex items-center justify-between text-xs animate-in fade-in">
+          <div className="flex items-center gap-2.5">
+            <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+            <span className="font-semibold">{uploadSuccessMessage}</span>
+          </div>
+          <button
+            onClick={() => setUploadSuccessMessage('')}
+            className="text-emerald-400 hover:text-white p-1 rounded-lg hover:bg-emerald-500/20 transition-colors cursor-pointer"
+            title="Dismiss"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Document Grid */}
       {loading ? (
         <Loader message="Loading document repository..." />
@@ -187,9 +206,29 @@ export const DocumentLibraryPage: React.FC = () => {
             >
               <div>
                 <div className="flex items-center justify-between gap-2 mb-2">
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-space-800 text-cosmic-purple border border-space-700 font-bold uppercase">
-                    {doc.space_agency}
-                  </span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-space-800 text-cosmic-purple border border-space-700 font-bold uppercase">
+                      {doc.space_agency}
+                    </span>
+                    {doc.processing_status === 'completed' && (
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-1 font-semibold">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                        <span>Indexed & Verified</span>
+                      </span>
+                    )}
+                    {doc.processing_status === 'processing' && (
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center gap-1 font-semibold">
+                        <RefreshCw className="w-3 h-3 text-amber-400 animate-spin" />
+                        <span>Processing</span>
+                      </span>
+                    )}
+                    {doc.processing_status === 'failed' && (
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/30 flex items-center gap-1 font-semibold">
+                        <AlertTriangle className="w-3 h-3 text-rose-400" />
+                        <span>Failed</span>
+                      </span>
+                    )}
+                  </div>
                   <span className="text-[10px] font-mono text-slate-400">
                     {doc.publication_year || 'Historical'}
                   </span>

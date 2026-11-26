@@ -26,6 +26,15 @@ export interface ResearchMessage {
   message_text: string;
   citations?: CitationItem[];
   retrieval_confidence?: number;
+  confidence_details?: {
+    score?: number;
+    level?: string;
+    label?: string;
+    warning?: string;
+    is_grounded?: boolean;
+    mission_consistent?: boolean;
+  };
+  active_mission?: string;
   created_at: string;
 }
 

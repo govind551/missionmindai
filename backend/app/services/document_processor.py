@@ -44,12 +44,23 @@ class DocumentProcessor:
             for c_data in chunks_data:
                 embedding_vector = embedding_provider.get_embedding(c_data["chunk_text"])
                 
+                meta = c_data.get("chunk_metadata") or {}
+                meta.update({
+                    "page_number": c_data["page_number"],
+                    "physical_page": c_data["page_number"],
+                    "document_title": doc.title,
+                    "mission_name": doc.mission_name,
+                    "space_agency": doc.space_agency,
+                    "source_url": doc.source_url,
+                    "section_heading": c_data.get("section_heading")
+                })
+
                 chunk_record = DocumentChunk(
                     document_id=doc.id,
                     page_number=c_data["page_number"],
                     section_heading=c_data["section_heading"],
                     chunk_text=c_data["chunk_text"],
-                    chunk_metadata=c_data["chunk_metadata"]
+                    chunk_metadata=meta
                 )
                 chunk_record.embedding = embedding_vector
                 db.add(chunk_record)
